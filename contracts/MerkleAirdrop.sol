@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract Airdrop{
 
-    address bAYCaddress = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D;
+    address bAYCaddress = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D
     bytes32 merkleRoot;
     address owner;
 
