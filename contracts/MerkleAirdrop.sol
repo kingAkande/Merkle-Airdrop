@@ -2,75 +2,58 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
+contract Airdrops {
 
-contract Airdrop{
-
-    address bAYCaddress = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D
-    bytes32 merkleRoot;
-    address owner;
-
-   
+    address public bAYCaddress = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D;
+    bytes32 public merkleRoot;
+    address public owner;
 
     mapping (address => bool) public alreadyClaimed;
 
-
-    constructor( bytes32 _merkleRoot) {
-
+    constructor(bytes32 _merkleRoot) {
         merkleRoot = _merkleRoot;
         owner = msg.sender;
-
     }
 
     modifier onlyOwner() {
-
-        require( owner == msg.sender, "not owner");
+        require(owner == msg.sender, "Not the owner");
         _;
-
     }
 
-    event SuccessfulClaim(address indexed user , uint _amount );
-    
+    event SuccessfulClaim(address indexed user, uint _tokenId);
 
-    function claimAirdrop( uint _amount, bytes32[] calldata _merkleProof) external  {
+    function claimAirdrop(uint _tokenId, bytes32[] calldata _merkleProof) external {
+        // Ensure the contract holds the specified token
+        require(IERC721(bAYCaddress).ownerOf(_tokenId) == address(this), "Contract does not own this token");
 
-        require(IERC721(bAYCaddress).balanceOf(address(this)) > 0 , "not enough balance"  );
-        
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, _amount));
+        // Verify the merkle proof
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, _tokenId));
+        require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), "Invalid Merkle Proof");
 
-        require(alreadyClaimed[msg.sender] == true , "shole nie ni");
+        // Ensure the user has not already claimed
+        require(alreadyClaimed[msg.sender] == false, "Airdrop already claimed");
 
-        MerkleProof.verify(_merkleProof,merkleRoot,leaf);
+        // Transfer the token to the user
+        IERC721(bAYCaddress).safeTransferFrom(address(this), msg.sender, _tokenId);
 
-        IERC721( bAYCaddress ).transfer(msg.sender ,_amount );
+        // Mark as claimed
+        alreadyClaimed[msg.sender] = true;
 
-        alreadyClaimed[msg.sender]= true;
-
-        emit SuccessfulClaim(msg.sender , _amount );
-
+        emit SuccessfulClaim(msg.sender, _tokenId);
     }
 
-   
-
-    function uPdateMerkleRoot(bytes32 _merkleRoot) private onlyOwner {
-
+    function updateMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
         merkleRoot = _merkleRoot;
-
     }
 
+    function withdrawRemainingTokens(uint _tokenId) external onlyOwner {
+        // Ensure the contract holds the specified token
+        require(IERC721(bAYCaddress).ownerOf(_tokenId) == address(this), "Contract does not own this token");
 
-
-    function withdrawRemainingToken() private {
-
-     require(IERC721(tokenAddress).balanceOf(address(this)) > 0 , "not enough balance"  );
-
-        uint256 tokenbalance = IERC721(bAYCaddress).balanceOf(address(this)) ;
-        
-        IERC721(bAYCaddress).transfer(owner,tokenbalance);
+        // Transfer the token back to the owner
+        IERC721(bAYCaddress).safeTransferFrom(address(this), owner, _tokenId);
     }
-
-    
-
-
 }
